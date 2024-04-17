@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
       socket.on("message", (message) => {
         console.log("message: " + message);
-        io.emit("chat message", message);
+        io.emit("message", message);
       });
 
       socket.on("disconnect", () => {
@@ -27,6 +27,6 @@ export default async function handler(req, res) {
       });
     });
   }
-
+  console.log("socket.io server is running api");
   res.end();
 }
