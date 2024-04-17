@@ -1,41 +1,37 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
-const cors = require("cors");
-const path = require("path");
+const { createServer } = require("node:http");
+const next = require("next");
+const { Server } = require("socket.io");
 
-const app = express();
-const server = http.createServer(app);
+const dev = process.env.NODE_ENV !== "production";
+const hostname = "localhost";
+const port = 3000;
+// when using middleware `hostname` and `port` must be provided below
+const app = next({ dev, hostname, port });
+const handler = app.getRequestHandler();
 
-// Enable CORS for all origins in Express app
-app.use(cors());
+app.prepare().then(() => {
+  const httpServer = createServer(handler);
 
-// Serve static assets from the "public" directory
-app.use(express.static(path.join(__dirname, "public")));
-
-const io = socketIo(server, {
-  cors: {
-    origin: `http://localhost:3001`,
-    methods: ["GET", "POST"],
-  },
-});
-// Define WebSocket connection event
-io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  // Handle WebSocket 'message' event
-  socket.on("message", (msg) => {
-    console.log("message: " + msg);
-    // Broadcast the message to all connected clients
-    io.emit("message", msg);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: `${process.env.NODE_FRONTEND_API}`,
+      allowedHeaders: ["*"],
+      credentials: true,
+    },
   });
 
-  // Handle WebSocket 'disconnect' event
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
+  io.on("connection", (socket) => {
+    socket.on("message", (message) => {
+      io.emit("message", message);
+    });
   });
-});
 
-server.listen(3000, () => {
-  console.log(`Server is running on port http://localhost:3000`);
+  httpServer
+    .once("error", (err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .listen(port, () => {
+      console.log(`> Ready on http://${hostname}:${port}`);
+    });
 });
